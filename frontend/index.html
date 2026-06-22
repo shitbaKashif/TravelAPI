@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Jazz Travel Assitant</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #161616;
+    --surface-elevated: #1e1e1e;
+    --maroon: #6b1c2e;
+    --maroon-deep: #4a1420;
+    --maroon-light: #8b2d42;
+    --gold: #e8c547;
+    --gold-dim: #c9a227;
+    --text: #f5f5f5;
+    --muted: #9ca3af;
+    --border: #2a2a2a;
+    --radius: 22px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .chat-shell {
+    width: 100%;
+    max-width: 780px;
+    height: 100vh;
+    max-height: 900px;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border-radius: 24px;
+    border: 1px solid var(--border);
+    box-shadow: 0 24px 80px rgba(0,0,0,.55);
+    overflow: hidden;
+  }
+
+  .chat-header {
+    background: linear-gradient(180deg, #000 0%, var(--surface) 100%);
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .avatar {
+    width: 46px; height: 46px;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dim) 100%);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .chat-header h1 { color: var(--text); font-size: 1.08rem; font-weight: 600; letter-spacing: .02em; }
+  .chat-header p  { color: var(--muted); font-size: .8rem; margin-top: 2px; }
+  .status-dot {
+    width: 9px; height: 9px; background: #22c55e;
+    border-radius: 50%; border: 2px solid var(--surface);
+    margin-left: -14px; margin-top: 30px;
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 20px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scroll-behavior: smooth;
+    background: var(--bg);
+  }
+  .chat-messages::-webkit-scrollbar { width: 6px; }
+  .chat-messages::-webkit-scrollbar-thumb { background: var(--maroon); border-radius: 4px; }
+
+  .msg { display: flex; gap: 10px; align-items: flex-end; max-width: 90%; }
+  .msg.bot  { align-self: flex-start; }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+
+  .msg-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--maroon);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0;
+    border: 1px solid var(--maroon-light);
+  }
+  .msg.user .msg-avatar { background: var(--maroon-deep); }
+
+  .bubble {
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    font-size: .92rem;
+    line-height: 1.55;
+    max-width: 100%;
+  }
+  .msg.bot  .bubble {
+    background: var(--surface-elevated);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 8px;
+  }
+  .msg.user .bubble {
+    background: linear-gradient(135deg, var(--maroon) 0%, var(--maroon-deep) 100%);
+    color: #fff;
+    border-bottom-right-radius: 8px;
+    border: 1px solid var(--maroon-light);
+  }
+
+  .chips {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 6px 0 4px 42px;
+  }
+  .chip {
+    padding: 8px 18px;
+    border: 1px solid var(--gold-dim);
+    border-radius: 24px;
+    font-size: .85rem;
+    color: var(--gold);
+    background: var(--surface-elevated);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .chip:hover {
+    background: var(--maroon);
+    border-color: var(--maroon-light);
+    color: #fff;
+  }
+
+  .cards { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+  .card {
+    background: var(--surface-elevated);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 16px 18px;
+    cursor: pointer;
+    transition: all .15s;
+    position: relative;
+  }
+  .card:hover {
+    border-color: var(--maroon-light);
+    box-shadow: 0 8px 28px rgba(107, 28, 46, .25);
+  }
+  .card.selected {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 1px var(--gold-dim);
+    background: #252018;
+  }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .airline-name { font-weight: 700; font-size: .95rem; color: var(--text); }
+  .price-tag { font-weight: 800; font-size: 1.08rem; color: var(--gold); }
+  .card-row { display: flex; gap: 12px; font-size: .82rem; color: var(--muted); flex-wrap: wrap; }
+  .card-row span { display: flex; align-items: center; gap: 4px; }
+  .badge {
+    font-size: .72rem; padding: 4px 10px; border-radius: 20px;
+    background: rgba(107, 28, 46, .45);
+    color: #f5d4dc;
+    font-weight: 600;
+    border: 1px solid var(--maroon);
+  }
+  .badge.business { background: rgba(232, 197, 71, .15); color: var(--gold); border-color: var(--gold-dim); }
+  .badge-trip { background: rgba(34, 197, 94, .12); color: #86efac; border-color: #166534; }
+  .hotel-stars { color: var(--gold); letter-spacing: 1px; }
+
+  .input-bar {
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+  #userInput {
+    flex: 1;
+    padding: 12px 18px;
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    font-size: .92rem;
+    outline: none;
+    transition: border-color .15s;
+    background: var(--surface-elevated);
+    color: var(--text);
+  }
+  #userInput::placeholder { color: var(--muted); }
+  #userInput:focus { border-color: var(--maroon-light); }
+  #sendBtn {
+    width: 46px; height: 46px;
+    background: linear-gradient(135deg, var(--maroon) 0%, var(--maroon-deep) 100%);
+    border: 1px solid var(--maroon-light);
+    border-radius: 50%;
+    color: #fff; font-size: 18px;
+    cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: transform .15s, box-shadow .15s;
+  }
+  #sendBtn:hover { box-shadow: 0 4px 16px rgba(107, 28, 46, .4); }
+  #sendBtn:disabled { opacity: .45; cursor: default; box-shadow: none; }
+
+  .typing { display: flex; align-items: center; gap: 5px; padding: 10px 14px; }
+  .typing span {
+    width: 7px; height: 7px; background: var(--muted); border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: .2s; }
+  .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes bounce {
+    0%,60%,100% { transform: translateY(0); }
+    30%          { transform: translateY(-6px); }
+  }
+
+  .confirm-box {
+    background: linear-gradient(160deg, var(--maroon-deep) 0%, #0f0f0f 55%, var(--surface-elevated) 100%);
+    color: var(--text);
+    border-radius: 20px;
+    padding: 20px 22px;
+    font-size: .88rem;
+    line-height: 1.7;
+    border: 1px solid var(--border);
+  }
+  .confirm-box .ref { font-size: 1.2rem; font-weight: 800; color: var(--gold); margin-bottom: 8px; }
+  .confirm-box hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+  .confirm-box .row { display: flex; justify-content: space-between; gap: 8px; }
+  .confirm-box .total { font-size: 1.05rem; font-weight: 700; color: var(--gold); }
+
+  @media (max-width: 600px) {
+    .chat-shell { border-radius: 0; max-height: 100vh; }
+  }
+</style>
+</head>
+<body>
+
+<div class="chat-shell">
+  <!-- Header -->
+  <div class="chat-header">
+    <div style="position:relative">
+      <div class="avatar">✈️</div>
+      <div class="status-dot"></div>
+    </div>
+    <div>
+      <h1>Jazz Travel Assitant</h1>
+      <p>Pakistan Domestic &amp; International Flights</p>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div class="chat-messages" id="chatMessages"></div>
+
+  <!-- Input bar -->
+  <div class="input-bar">
+    <input id="userInput" type="text" placeholder="Type your answer…" autocomplete="off" />
+    <button id="sendBtn">➤</button>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:5099/api/travel';
+
+// ── State ──────────────────────────────────────────────────────────────────
+const state = {
+  step: 'start',
+  search: {
+    travelPurpose: '',
+    purposeDetail: '',
+    fromCity: '', toCity: '',
+    distanceKm: null,
+    departureDate: '', returnDate: null,
+    isRoundTrip: false,
+    isSameDay: false,
+    departureTime: '',
+    returnTime: '',
+    cabinClass: 'Economy',
+    preferredAirline: '',
+    passengers: 1,
+    includeHotel: false,
+    hotelNights: 0
+  },
+  booking: {
+    passengerName: 'shitba kashif', passengerEmail: 'shitba.kashif@jazz.guest.jazz.com.pk', passengerPhone: '485820',
+    employeeName: 'shitba kashif', employeeEmail: 'shitba.kashif@jazz.guest.jazz.com.pk', department: 'digitalization'
+  },
+  flights: [],
+  hotels: [],
+  selectedFlight: null,
+  selectedHotel: null
+};
+
+// ── DOM helpers ────────────────────────────────────────────────────────────
+const $msgs  = document.getElementById('chatMessages');
+const $input = document.getElementById('userInput');
+const $send  = document.getElementById('sendBtn');
+
+function scrollBottom() { $msgs.scrollTop = $msgs.scrollHeight; }
+
+function addBotBubble(html, delay = 400) {
+  return new Promise(res => {
+    // typing indicator
+    const typingEl = document.createElement('div');
+    typingEl.className = 'msg bot';
+    typingEl.innerHTML = `<div class="msg-avatar">🤖</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+    $msgs.appendChild(typingEl);
+    scrollBottom();
+
+    setTimeout(() => {
+      typingEl.remove();
+      const el = document.createElement('div');
+      el.className = 'msg bot';
+      el.innerHTML = `<div class="msg-avatar">🤖</div><div class="bubble">${html}</div>`;
+      $msgs.appendChild(el);
+      scrollBottom();
+      res(el);
+    }, delay);
+  });
+}
+
+function addUserBubble(text) {
+  const el = document.createElement('div');
+  el.className = 'msg user';
+  el.innerHTML = `<div class="msg-avatar">👤</div><div class="bubble">${escHtml(text)}</div>`;
+  $msgs.appendChild(el);
+  scrollBottom();
+}
+
+function addChips(options, onSelect) {
+  const el = document.createElement('div');
+  el.className = 'chips';
+  options.forEach(opt => {
+    const chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.textContent = opt.label ?? opt;
+    chip.onclick = () => { el.remove(); onSelect(opt.value ?? opt); };
+    el.appendChild(chip);
+  });
+  $msgs.appendChild(el);
+  scrollBottom();
+  return el;
+}
+
+function addCards(items, renderFn, onSelect) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg bot';
+  const inner = document.createElement('div');
+  inner.style.width = '100%';
+  const grid = document.createElement('div');
+  grid.className = 'cards';
+
+  items.forEach((item, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = renderFn(item, i);
+    card.onclick = () => {
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      // small delay so user sees the selection
+      setTimeout(() => {
+        wrapper.remove();
+        onSelect(item);
+      }, 300);
+    };
+    grid.appendChild(card);
+  });
+
+  inner.appendChild(grid);
+  wrapper.appendChild(inner);
+  $msgs.appendChild(wrapper);
+  scrollBottom();
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function setInput(placeholder, type = 'text') {
+  $input.placeholder = placeholder;
+  $input.type = type;
+  $input.value = '';
+  $input.focus();
+}
+
+function disableInput(msg = '') {
+  $input.placeholder = msg || 'Choose an option above…';
+  $input.disabled = true;
+  $send.disabled  = true;
+}
+
+function enableInput() {
+  $input.disabled = false;
+  $send.disabled  = false;
+}
+
+// ── Send handler ───────────────────────────────────────────────────────────
+$send.onclick = handleSend;
+$input.addEventListener('keydown', e => { if (e.key === 'Enter') handleSend(); });
+
+function handleSend() {
+  const val = $input.value.trim();
+  if (!val || $input.disabled) return;
+  $input.value = '';
+  processInput(val);
+}
+
+// ── Step machine ───────────────────────────────────────────────────────────
+async function processInput(val) {
+  switch (state.step) {
+    case 'await_purpose':   await handlePurpose(val); break;
+    case 'await_purpose_detail': await handlePurposeDetail(val); break;
+    case 'await_from':      await handleFrom(val); break;
+    case 'await_to':        await handleTo(val); break;
+    case 'await_distance':  await handleDistance(val); break;
+    case 'await_depart':    await handleDepart(val); break;
+    case 'await_return':    await handleReturn(val); break;
+    case 'await_depart_time': await handleDepartTime(val); break;
+    case 'await_return_time': await handleReturnTimeSameDay(val); break;
+    case 'await_airline':   await handleAirline(val); break;
+    case 'await_pax':       await handlePax(val); break;
+    case 'await_nights':    await handleNights(val); break;
+  }
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+async function boot() {
+  disableInput('Starting…');
+  await addBotBubble(`👋 <strong>Hello! I'm your Jazz Travel Assitant.</strong><br>Tickets shown from lowest to highest price.<br><br><strong>First, select travel purpose.</strong>`, 600);
+
+  state.step = 'await_purpose';
+  disableInput();
+  addChips(['Official Work', 'Training', 'Conference', 'Client Visit', 'Other'], async choice => {
+    await handlePurpose(choice);
+  });
+
+  enableInput();
+  setInput('Purpose in detail…');
+}
+
+// ── Step handlers ──────────────────────────────────────────────────────────
+async function handlePurpose(val) {
+  addUserBubble(val);
+  state.search.travelPurpose = val.trim();
+  state.step = 'await_purpose_detail';
+  await addBotBubble(`🧾 Please provide <strong>purpose in detail</strong>.`);
+  setInput('Purpose in detail…');
+}
+
+async function handlePurposeDetail(val) {
+  addUserBubble(val);
+  if (val.trim().length < 3) {
+    await addBotBubble(`⚠️ Please enter a meaningful purpose detail.`);
+    return;
+  }
+  state.search.purposeDetail = val.trim();
+  await addBotBubble(`✅ Noted.<br><br>Now tell me <strong>where are you travelling from?</strong><br><small style="color:#6b7280">Type city name or airport code</small>`);
+
+  try {
+    const res  = await fetch(`${API}/cities`);
+    const data = await res.json();
+    const domestic = data.filter(c => c.type === 'Domestic').slice(0, 7);
+    addChips(domestic.map(c => ({ label: `${c.name} (${c.code})`, value: c.name })), city => {
+      handleFrom(city);
+    });
+  } catch {}
+
+  state.step = 'await_from';
+  setInput('Type city name or code…');
+}
+
+async function handleFrom(val) {
+  addUserBubble(val);
+  state.search.fromCity = val;
+  state.step = 'await_to';
+  await addBotBubble(`✅ <strong>${escHtml(val)}</strong> set as your departure city.<br><br>🛬 <strong>Where are you flying to?</strong>`);
+  setInput('Destination city or code…');
+}
+
+async function handleTo(val) {
+  addUserBubble(val);
+  state.search.toCity = val;
+  state.step = 'await_distance';
+  await addBotBubble(`✅ Flying to <strong>${escHtml(val)}</strong>.<br><br>📏 <strong>Distance (in KMs)?</strong> <small style="color:#6b7280">(optional, type 0 to skip)</small>`);
+  enableInput();
+  setInput('Distance in KM…', 'number');
+}
+
+async function handleDistance(val) {
+  addUserBubble(val);
+  const n = Number(val);
+  state.search.distanceKm = !isNaN(n) && n > 0 ? n : null;
+  state.step = 'await_trip_type';
+  disableInput();
+
+  await addBotBubble(`🔄 <strong>Select trip type:</strong>`);
+  addChips(['One-Way ✈', 'Round-Trip ↩', 'Same Day 🕒'], choice => {
+    state.search.isSameDay = choice.includes('Same Day');
+    state.search.isRoundTrip = choice.includes('Round-Trip');
+    addUserBubble(choice);
+    askDepartDate();
+  });
+}
+
+async function askDepartDate() {
+  state.step = 'await_depart';
+  await addBotBubble(`📅 <strong>What's your departure date?</strong><br><small style="color:#6b7280">Format: YYYY-MM-DD (e.g. 2025-06-15)</small>`);
+  enableInput();
+  setInput('YYYY-MM-DD', 'date');
+}
+
+async function handleDepart(val) {
+  addUserBubble(val);
+  if (!val || isNaN(Date.parse(val))) {
+    await addBotBubble(`⚠️ That doesn't look like a valid date. Please use YYYY-MM-DD format.`);
+    return;
+  }
+  if (new Date(val) < new Date(new Date().toDateString())) {
+    await addBotBubble(`⚠️ Departure date can't be in the past. Please pick a future date.`);
+    return;
+  }
+  state.search.departureDate = val;
+
+  if (state.search.isSameDay) {
+    state.search.returnDate = val;
+    await askDepartTime();
+    return;
+  }
+  if (state.search.isRoundTrip) {
+    state.step = 'await_return';
+    await addBotBubble(`📅 <strong>What's your return date?</strong><br><small style="color:#9ca3af">Must be after your departure date.</small>`);
+    setInput('YYYY-MM-DD', 'date');
+  } else {
+    state.search.returnDate = null;
+    await askDepartTime();
+  }
+}
+
+async function handleReturn(val) {
+  addUserBubble(val);
+  if (!val || isNaN(Date.parse(val))) {
+    await addBotBubble(`⚠️ Invalid date format. Please use YYYY-MM-DD.`);
+    return;
+  }
+  if (new Date(val) <= new Date(state.search.departureDate)) {
+    await addBotBubble(`⚠️ Return date must be after your departure date.`);
+    return;
+  }
+  state.search.returnDate = val;
+  await askDepartTime();
+}
+
+async function askDepartTime() {
+  state.step = 'await_depart_time';
+  const label = state.search.isSameDay
+    ? `🛫 <strong>Outbound departure time</strong> (leave ${escHtml(state.search.fromCity)})`
+    : `🕒 <strong>Departure time?</strong>`;
+  await addBotBubble(`${label}<br><small style="color:#9ca3af">Format: HH:mm (e.g. 09:30)</small>`);
+  enableInput();
+  setInput('HH:mm', 'time');
+}
+
+async function handleDepartTime(val) {
+  addUserBubble(val);
+  if (!/^\d{2}:\d{2}$/.test(val)) {
+    await addBotBubble(`⚠️ Please enter time in HH:mm format.`);
+    return;
+  }
+  state.search.departureTime = val;
+  if (state.search.isSameDay) {
+    state.step = 'await_return_time';
+    await addBotBubble(`🔁 <strong>Return departure time</strong> (leave ${escHtml(state.search.toCity)} to fly back)<br><small style="color:#9ca3af">Same day — format: HH:mm (e.g. 18:30)</small>`);
+    setInput('HH:mm', 'time');
+    return;
+  }
+  state.step = 'await_airline';
+  await addBotBubble(`✈ <strong>Preferred air/airline?</strong> (optional)<br><small style="color:#9ca3af">Type airline name or type "Any"</small>`);
+  setInput('Airline preference…');
+}
+
+async function handleReturnTimeSameDay(val) {
+  addUserBubble(val);
+  if (!/^\d{2}:\d{2}$/.test(val)) {
+    await addBotBubble(`⚠️ Please enter time in HH:mm format.`);
+    return;
+  }
+  state.search.returnTime = val;
+  const [oh, om] = state.search.departureTime.split(':').map(Number);
+  const [rh, rm] = val.split(':').map(Number);
+  const outM = oh * 60 + om;
+  const retM = rh * 60 + rm;
+  if (retM <= outM) {
+    await addBotBubble(`⚠️ Return departure should be after your outbound time on the same day. Please enter a later time.`);
+    return;
+  }
+  state.step = 'await_airline';
+  await addBotBubble(`✈ <strong>Preferred air/airline?</strong> (optional)<br><small style="color:#9ca3af">Type airline name or type "Any"</small>`);
+  setInput('Airline preference…');
+}
+
+async function handleAirline(val) {
+  addUserBubble(val);
+  state.search.preferredAirline = val.trim().toLowerCase() === 'any' ? '' : val.trim();
+  await askCabin();
+}
+
+async function askCabin() {
+  state.step = 'await_cabin';
+  disableInput();
+  await addBotBubble(`💺 <strong>Which cabin class do you prefer?</strong>`);
+  addChips(
+    [{ label:'🪑 Economy', value:'Economy' }, { label:'💼 Business', value:'Business' }],
+    choice => {
+      state.search.cabinClass = choice;
+      addUserBubble(choice + ' class');
+      askPax();
+    }
+  );
+}
+
+async function askPax() {
+  state.step = 'await_pax';
+  await addBotBubble(`👥 <strong>How many passengers?</strong> (1–9)`);
+  enableInput();
+  setInput('Number of passengers…', 'number');
+}
+
+async function handlePax(val) {
+  addUserBubble(val);
+  const n = parseInt(val);
+  if (isNaN(n) || n < 1 || n > 9) {
+    await addBotBubble(`⚠️ Please enter a number between 1 and 9.`); return;
+  }
+  state.search.passengers = n;
+  state.step = 'await_hotel_q';
+  disableInput();
+  await addBotBubble(`🏨 <strong>Would you like to include a hotel reservation at your destination?</strong>`);
+  addChips(['Yes, add a hotel 🏨', 'No, flights only ✈'], choice => {
+    const yes = choice.startsWith('Yes');
+    state.search.includeHotel = yes;
+    addUserBubble(choice);
+    if (yes) askNights(); else searchFlights();
+  });
+}
+
+async function askNights() {
+  state.step = 'await_nights';
+  await addBotBubble(`🌙 <strong>How many nights will you be staying?</strong>`);
+  enableInput();
+  setInput('Number of nights…', 'number');
+}
+
+async function handleNights(val) {
+  addUserBubble(val);
+  const n = parseInt(val);
+  if (isNaN(n) || n < 1) {
+    await addBotBubble(`⚠️ Please enter a valid number of nights (at least 1).`); return;
+  }
+  state.search.hotelNights = n;
+  await searchFlights();
+}
+
+// ── Search & display flights ───────────────────────────────────────────────
+async function searchFlights() {
+  disableInput('Searching…');
+  const tripWord = state.search.isSameDay ? 'same-day return' : (state.search.isRoundTrip ? 'round-trip' : 'one-way');
+  await addBotBubble(`🔍 Searching for <strong>${state.search.cabinClass}</strong> ${tripWord} flights from <strong>${escHtml(state.search.fromCity)}</strong> to <strong>${escHtml(state.search.toCity)}</strong>…`, 300);
+
+  try {
+    const res = await fetch(`${API}/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state.search)
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      await addBotBubble(`❌ ${escHtml(data.title ?? data ?? 'Search failed.')}`);
+      enableInput(); return;
+    }
+
+    state.flights = data.flights ?? [];
+    state.hotels  = data.hotels  ?? [];
+
+    if (state.flights.length === 0) {
+      await addBotBubble(`😔 No flights found for that route. Let's try again — <strong>where are you departing from?</strong>`);
+      state.step = 'await_from';
+      enableInput(); setInput('Departure city…'); return;
+    }
+
+    await addBotBubble(`✅ Found <strong>${state.flights.length} flight${state.flights.length > 1 ? 's' : ''}</strong> sorted by price (lowest first). <strong>Tap a flight to select it.</strong>`);
+
+    addCards(state.flights, renderFlightCard, onFlightSelected);
+    disableInput('Select a flight above…');
+
+  } catch (e) {
+    await addBotBubble(`❌ Could not reach the booking server. Is the API running?`);
+    enableInput();
+  }
+}
+
+function renderFlightCard(f, i) {
+  const badgeClass = f.cabinClass === 'Business' ? 'business' : '';
+  return `
+    <div class="card-header">
+      <span class="airline-name">✈ ${escHtml(f.airline)}</span>
+      <span class="price-tag">PKR ${Number(f.totalPrice).toLocaleString()}</span>
+    </div>
+    <div class="card-row">
+      <span>🏙 <strong>${escHtml(f.fromCode)}</strong> → <strong>${escHtml(f.toCode)}</strong></span>
+      <span>⏱ ${escHtml(f.duration)}</span>
+      <span class="badge ${badgeClass}">${escHtml(f.cabinClass)}</span>
+      <span class="badge badge-trip">${escHtml(f.tripType)}</span>
+    </div>
+    <div class="card-row" style="margin-top:4px">
+      <span>🛫 ${escHtml(f.departureTime)}</span>
+      <span>🛬 ${escHtml(f.arrivalTime)}</span>
+      <span>PKR ${Number(f.pricePerPerson).toLocaleString()} × ${state.search.passengers} pax</span>
+    </div>`;
+}
+
+async function onFlightSelected(flight) {
+  state.selectedFlight = flight;
+  await addBotBubble(`✅ You selected <strong>${escHtml(flight.airline)}</strong> — ${escHtml(flight.fromCode)} → ${escHtml(flight.toCode)}<br>💰 Total: <strong>PKR ${Number(flight.totalPrice).toLocaleString()}</strong>`);
+
+  if (state.hotels.length > 0) {
+    await addBotBubble(`🏨 Here are available hotels at <strong>${escHtml(state.search.toCity)}</strong> (sorted by price). Tap to select or skip.`);
+    addCards(state.hotels, renderHotelCard, onHotelSelected);
+
+    // Add a skip chip
+    const skip = document.createElement('div');
+    skip.className = 'chips';
+    const skipChip = document.createElement('button');
+    skipChip.className = 'chip';
+    skipChip.textContent = 'Skip hotel →';
+    skipChip.onclick = () => { skip.remove(); onHotelSelected(null); };
+    skip.appendChild(skipChip);
+    $msgs.appendChild(skip);
+    scrollBottom();
+    disableInput('Select a hotel or skip…');
+  } else {
+    await showSummary();
+  }
+}
+
+function renderHotelCard(h) {
+  const stars = '★'.repeat(h.stars) + '☆'.repeat(5 - h.stars);
+  const nightTotal = h.pricePerNight * state.search.hotelNights;
+  return `
+    <div class="card-header">
+      <span class="airline-name">🏨 ${escHtml(h.name)}</span>
+      <span class="price-tag">PKR ${Number(h.pricePerNight).toLocaleString()}<small style="font-size:.7rem;font-weight:400">/night</small></span>
+    </div>
+    <div class="card-row">
+      <span class="hotel-stars">${stars}</span>
+      <span>📍 ${escHtml(h.location)}</span>
+    </div>
+    <div class="card-row" style="margin-top:4px">
+      <span>🌙 ${state.search.hotelNights} nights = <strong>PKR ${Number(nightTotal).toLocaleString()}</strong></span>
+    </div>
+    <div class="card-row" style="margin-top:2px;color:#6b7280;font-size:.78rem">
+      <span>🛎 ${escHtml(h.amenities)}</span>
+    </div>`;
+}
+
+async function onHotelSelected(hotel) {
+  state.selectedHotel = hotel;
+  if (hotel) {
+    const nightTotal = hotel.pricePerNight * state.search.hotelNights;
+    await addBotBubble(`✅ Hotel selected: <strong>${escHtml(hotel.name)}</strong> (${hotel.stars}★)<br>💰 Hotel Total: <strong>PKR ${Number(nightTotal).toLocaleString()}</strong>`);
+  } else {
+    await addBotBubble(`ℹ️ No hotel added. Continuing with flight only.`);
+  }
+  await showSummary();
+}
+
+// ── Summary & Confirm ──────────────────────────────────────────────────────
+async function showSummary() {
+  const f = state.selectedFlight;
+  const h = state.selectedHotel;
+  const s = state.search;
+  const b = state.booking;
+  const hotelTotal  = h ? h.pricePerNight * s.hotelNights : 0;
+  const grandTotal  = f.totalPrice + hotelTotal;
+
+  state.step = 'await_confirm';
+  disableInput();
+
+  const hotelLine = h
+    ? `<div class="row"><span>🏨 ${escHtml(h.name)}</span><span>PKR ${Number(hotelTotal).toLocaleString()}</span></div>`
+    : `<div class="row"><span>🏨 Hotel</span><span>None</span></div>`;
+
+  const tripDatesRow = s.isSameDay
+    ? `<div class="row"><span>📅 Travel date</span><span>${escHtml(s.departureDate)} (same day return)</span></div>
+       <div class="row"><span>🛫 Outbound dep.</span><span>${escHtml(s.departureTime)}</span></div>
+       <div class="row"><span>🔁 Return dep.</span><span>${escHtml(s.returnTime)}</span></div>`
+    : s.isRoundTrip && s.returnDate
+    ? `<div class="row"><span>📅 Depart</span><span>${escHtml(s.departureDate)}</span></div>
+       <div class="row"><span>📅 Return</span><span>${escHtml(s.returnDate)}</span></div>
+       <div class="row"><span>🕒 Departure time</span><span>${escHtml(s.departureTime || 'N/A')}</span></div>`
+    : `<div class="row"><span>📅 Depart</span><span>${escHtml(s.departureDate)}</span></div>
+       <div class="row"><span>🕒 Departure time</span><span>${escHtml(s.departureTime || 'N/A')}</span></div>`;
+
+  const summaryHtml = `
+    <div class="confirm-box">
+      <div>📋 <strong>Booking Summary</strong></div>
+      <hr>
+      <div class="row"><span>👤 Passenger</span><span>${escHtml(b.passengerName)}</span></div>
+      <div class="row"><span>✉️ Email</span><span>${escHtml(b.passengerEmail)}</span></div>
+      <div class="row"><span>📱 Phone</span><span>${escHtml(b.passengerPhone)}</span></div>
+      <div class="row"><span>🏢 Dept</span><span>${escHtml(b.department)}</span></div>
+      <div class="row"><span>🧾 Purpose</span><span>${escHtml(s.travelPurpose)}</span></div>
+      <div class="row"><span>📌 Detail</span><span>${escHtml(s.purposeDetail)}</span></div>
+      <hr>
+      <div class="row"><span>✈ Flight</span><span>${escHtml(f.airline)}</span></div>
+      <div class="row"><span>🛫 Route</span><span>${escHtml(f.fromCode)} → ${escHtml(f.toCode)}</span></div>
+      ${tripDatesRow}
+      <div class="row"><span>📅 Ticket depart</span><span>${escHtml(f.departureTime)}</span></div>
+      <div class="row"><span>💺 Class</span><span>${escHtml(f.cabinClass)} | ${escHtml(f.tripType)}</span></div>
+      <div class="row"><span>👥 Pax</span><span>${s.passengers}</span></div>
+      <div class="row"><span>✈ Flight Total</span><span>PKR ${Number(f.totalPrice).toLocaleString()}</span></div>
+      ${hotelLine}
+      <hr>
+      <div class="row total"><span>💰 Grand Total</span><span>PKR ${Number(grandTotal).toLocaleString()}</span></div>
+      <hr>
+      <div class="row"><span>👔 Notify</span><span>Travel Desk</span></div>
+    </div>`;
+
+  await addBotBubble(summaryHtml, 500);
+  await addBotBubble(`<strong>Shall I confirm and submit this booking?</strong>`);
+  addChips(['✅ Confirm & Submit', '❌ Cancel'], async choice => {
+    addUserBubble(choice);
+    if (choice.startsWith('✅')) await submitBooking();
+    else await cancelBooking();
+  });
+}
+
+// ── Submit ─────────────────────────────────────────────────────────────────
+async function submitBooking() {
+  disableInput('Submitting…');
+  await addBotBubble(`⏳ Submitting your booking and sending notifications…`, 200);
+
+  const payload = {
+    passengerName:   state.booking.passengerName,
+    passengerEmail:  state.booking.passengerEmail,
+    passengerPhone:  state.booking.passengerPhone,
+    employeeName:    state.booking.employeeName,
+    employeeEmail:   state.booking.employeeEmail,
+    department:      state.booking.department,
+    searchCriteria:  state.search,
+    selectedFlightId: state.selectedFlight.flightId,
+    selectedHotelId:  state.selectedHotel?.hotelId ?? null
+  };
+
+  try {
+    const res  = await fetch(`${API}/book`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      await addBotBubble(`❌ Booking failed: ${escHtml(data.title ?? JSON.stringify(data))}`);
+      enableInput(); return;
+    }
+
+    const f = data.selectedFlight;
+    const h = data.selectedHotel;
+    const hotelLine = h
+      ? `<div class="row"><span>🏨 ${escHtml(h.name)}</span><span>PKR ${Number(data.hotelTotal).toLocaleString()}</span></div>`
+      : '';
+
+    const confirmHtml = `
+      <div class="confirm-box">
+        <div class="ref">🎉 ${escHtml(data.bookingReference)}</div>
+        <div style="margin-bottom:8px;opacity:.85">Booking submitted successfully!</div>
+        <hr>
+        <div class="row"><span>✈ ${escHtml(f.airline)}</span><span>${escHtml(f.fromCode)} → ${escHtml(f.toCode)}</span></div>
+        <div class="row"><span>📅 ${escHtml(f.departureTime)}</span><span>${escHtml(f.cabinClass)}</span></div>
+        <div class="row"><span>✈ Flight Total</span><span>PKR ${Number(data.flightTotal).toLocaleString()}</span></div>
+        ${hotelLine}
+        <hr>
+        <div class="row total"><span>💰 Grand Total</span><span>PKR ${Number(data.grandTotal).toLocaleString()}</span></div>
+        <hr>
+        <div style="opacity:.8;font-size:.83rem">📧 Confirmation sent to ${escHtml(state.booking.passengerEmail)}<br>
+        📨 Mail sent to Travel Desk</div>
+      </div>`;
+
+    await addBotBubble(confirmHtml, 600);
+    await addBotBubble(`✅ All done! Is there anything else I can help you with?`, 800);
+
+    addChips(['🔄 New Booking', '👋 Done'], async choice => {
+      addUserBubble(choice);
+      if (choice.includes('New')) {
+        resetState();
+        await addBotBubble(`Great! Let's plan another trip. 🌍<br><strong>Where are you departing from?</strong>`);
+        state.step = 'await_from';
+        enableInput(); setInput('Departure city…');
+      } else {
+        await addBotBubble(`👋 Thank you for using Jazz Travel Assitant. Have a great trip! ✈️`);
+      }
+    });
+
+  } catch (e) {
+    await addBotBubble(`❌ Network error. Please check that the API is running and try again.`);
+    enableInput();
+  }
+}
+
+async function cancelBooking() {
+  resetState();
+  await addBotBubble(`↩️ Booking cancelled. Let's start over — <strong>where are you departing from?</strong>`);
+  state.step = 'await_from';
+  enableInput();
+  setInput('Departure city…');
+}
+
+function resetState() {
+  Object.assign(state, {
+    step: 'start', flights: [], hotels: [],
+    selectedFlight: null, selectedHotel: null,
+    search: {
+      travelPurpose:'', purposeDetail:'', fromCity:'', toCity:'', distanceKm:null,
+      departureDate:'', departureTime:'', returnTime:'', returnDate:null, isRoundTrip:false, isSameDay:false,
+      cabinClass:'Economy', preferredAirline:'', passengers:1, includeHotel:false, hotelNights:0
+    },
+    booking: {
+      passengerName:'shitba kashif',
+      passengerEmail:'shitba.kashif@jazz.guest.jazz.com.pk',
+      passengerPhone:'485820',
+      employeeName:'shitba kashif',
+      employeeEmail:'shitba.kashif@jazz.guest.jazz.com.pk',
+      department:'digitalization'
+    }
+  });
+}
+
+// ── Start ──────────────────────────────────────────────────────────────────
+boot();
+</script>
+</body>
+</html>
